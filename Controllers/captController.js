@@ -1,9 +1,13 @@
+const express = require('express');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const Data = require('../Database/Models/capteur');
 const Setting = require('../Database/Models/settings'); 
 const Configuration = require('../Database/Models/configurationT'); 
 
+const router = express.Router();
+
+// Route handler function for inserting data
 const insertData = async (req, res) => {
   try {
     // Retrieve reference from request parameters
@@ -62,4 +66,7 @@ const insertData = async (req, res) => {
   }
 };
 
-module.exports = { insertData };
+// Define the route for inserting data
+router.post('/insertData/:reference', insertData);
+
+module.exports = router;
