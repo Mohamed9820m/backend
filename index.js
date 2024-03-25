@@ -9,6 +9,9 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const sequelize =require('./Database/configdb')
 const cookieParser = require('cookie-parser');
+
+const captController = require('./Controllers/captController')
+
            
 const configurationRoute = require('./Routes/configurationroute');
 const capteurRoute = require('./Routes/capteurroute')
