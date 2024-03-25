@@ -1,32 +1,28 @@
+const express = require('express');
 const jwt = require('jsonwebtoken');
 const Sequelize = require('sequelize');
 const Setting = require('../Database/Models/settings');
-const Configuration = require('../Database/Models/configurationT'); // Import the Configuration model
-const sequelize = require('../Database/configdb'); // Import the sequelize instance
+const Configuration = require('../Database/Models/configurationT');
+const sequelize = require('../Database/configdb');
+
+const router = express.Router();
 
 async function generateTokenController(reference, code) {
   try {
-    // Find the setting based on reference and code
     const setting = await Setting.findOne({
       where: { reference, code },
     });
 
     if (setting) {
       if (setting.token && !isTokenExpired(setting.token)) {
-        return setting.token; // Return existing token if not expired
+        return setting.token;
       }
 
-      // Retrieve the associated configurationId from the Setting
       const configurationId = setting.configurationId;
-
-      // Generate a new token with configurationId in the payload
-      // const expirationTime = Math.floor(Date.now() / 1000) + 30; // Token expires in 30 seconds
-      const expirationTime = Math.floor(Date.now() / 1000) + (24 * 60 * 60); // Token expires in 24 hours
-
+      const expirationTime = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
       const tokenPayload = { settingId: setting.id, configurationId };
       const token = jwt.sign(tokenPayload, 'your_secret_key', { expiresIn: expirationTime });
 
-      // Update setting with the new token
       setting.token = token;
       await setting.save();
 
@@ -52,10 +48,8 @@ async function deleteExpiredTokens() {
   try {
     const expiredSettings = await Setting.findAll({
       where: {
-        token: { [Sequelize.Op.ne]: null }, 
-        // updatedAt: { [Sequelize.Op.lt]: new Date(Date.now() - (30 * 1000)) } // Delete tokens older than 30 seconds
-        updatedAt: { [Sequelize.Op.lt]: new Date(Date.now() - (24 * 60 * 60 * 1000)) } // Delete tokens older than 24 hours
-
+        token: { [Sequelize.Op.ne]: null },
+        updatedAt: { [Sequelize.Op.lt]: new Date(Date.now() - (24 * 60 * 60 * 1000)) }
       }
     });
 
@@ -68,8 +62,24 @@ async function deleteExpiredTokens() {
   }
 }
 
-setInterval(deleteExpiredTokens, 24 * 60 * 60 * 1000); // Check for expired tokens every 24 hours
+setInterval(deleteExpiredTokens, 24 * 60 * 60 * 1000);
 
-// setInterval(deleteExpiredTokens, 30 * 1000); 
+router.post('/generateToken', async (req, res) => {
+  const { reference, code } = req.body;
 
-module.exports = { generateTokenController };
+  try {
+    const token = await generateTokenController(reference, code);
+
+    if (token) {
+      res.setHeader('Authorization', `Bearer ${token}`);
+      res.status(200).json({ token });
+    } else {
+      res.status(404).json({ error: 'Setting not found' });
+    }
+  } catch (error) {
+    console.error('Error generating token:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+module.exports = router;
